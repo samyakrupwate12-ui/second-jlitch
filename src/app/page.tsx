@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Hero from '@/components/home/Hero';
 import ProductGrid from '@/components/product/ProductGrid';
-import { PLACEHOLDER_PRODUCTS } from '@/lib/placeholder-data';
+
 import { getPublicProducts } from '@/lib/products-db';
 import { mapDbProductToProduct } from '@/lib/productMapper';
 import { Product } from '@/types/product';
@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>(PLACEHOLDER_PRODUCTS.slice(0, 3));
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     async function loadHomeProducts() {
