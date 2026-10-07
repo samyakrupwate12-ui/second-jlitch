@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllProductsAdmin, updateProduct } from '@/lib/products-db';
-import { DbProduct } from '@/types/db';
+import { getAllProductsAdmin, updateProduct, updateProductVisibility } from '@/lib/products-db';
+import { DbProduct, PRODUCT_STATUS_LABELS } from '@/types/db';
 import {
   Sparkles,
   Plus,
@@ -47,7 +47,7 @@ export default function AdminPreLovedPage() {
 
   const handleToggleVisibility = async (prod: DbProduct) => {
     try {
-      await updateProduct(prod.id, { is_catalog_visible: !prod.is_catalog_visible });
+      await updateProductVisibility(prod.id, !prod.is_catalog_visible);
       setSuccessMsg(`Updated visibility for ${prod.name}`);
       fetchPreLovedProducts();
     } catch (err: any) {
@@ -218,7 +218,7 @@ export default function AdminPreLovedPage() {
                               : 'bg-slate-100 text-slate-700 border border-slate-200'
                           }`}
                         >
-                          {prod.status === 'active' ? 'Published' : prod.status}
+                          {PRODUCT_STATUS_LABELS[prod.status] || prod.status}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">

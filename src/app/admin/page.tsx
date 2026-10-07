@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAllProductsAdmin } from '@/lib/products-db';
-import { DbProduct } from '@/types/db';
+import { DbProduct, PRODUCT_STATUS_LABELS } from '@/types/db';
 import {
   Package,
   Sparkles,
@@ -297,7 +297,7 @@ export default function AdminDashboardPage() {
                               : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}
                         >
-                          {prod.status === 'active' ? 'Published' : prod.status}
+                          {PRODUCT_STATUS_LABELS[prod.status] || prod.status}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right">

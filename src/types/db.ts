@@ -1,6 +1,13 @@
 export type ProductStatus = 'draft' | 'active' | 'archived' | 'sold';
 export type ProductType = 'new' | 'pre-loved';
 
+export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
+  draft: 'Draft',
+  active: 'Published',
+  sold: 'Sold',
+  archived: 'Archived',
+};
+
 export interface DbProduct {
   id: string;
   name: string;

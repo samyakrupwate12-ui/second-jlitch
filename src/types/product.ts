@@ -1,3 +1,5 @@
+import { ProductStatus } from './db';
+
 export interface Product {
   id: string;
   name: string;
@@ -16,7 +18,7 @@ export interface Product {
   material?: string;
   originalPrice?: number;
   inventoryQuantity?: number;
-  status?: string;
+  status?: ProductStatus;
   isFeatured?: boolean;
   isCatalogVisible?: boolean;
   productType?: 'New' | 'Pre-Loved' | string;

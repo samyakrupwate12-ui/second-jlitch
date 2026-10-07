@@ -3,7 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllProductsAdmin, updateProduct, deleteProduct } from '@/lib/products-db';
+import {
+  getAllProductsAdmin,
+  updateProduct,
+  updateProductVisibility,
+  deleteProduct,
+  normalizeProductStatus,
+  PRODUCT_STATUS_LABELS,
+} from '@/lib/products-db';
 import { DbProduct, ProductStatus } from '@/types/db';
 import {
   Plus,
@@ -70,7 +77,7 @@ export default function AdminProductsPage() {
 
   const handleToggleVisibility = async (prod: DbProduct) => {
     try {
-      await updateProduct(prod.id, { is_catalog_visible: !prod.is_catalog_visible });
+      await updateProductVisibility(prod.id, !prod.is_catalog_visible);
       setSuccessMsg(`Updated catalog visibility for ${prod.name}`);
       fetchProducts();
     } catch (err: any) {
@@ -80,12 +87,13 @@ export default function AdminProductsPage() {
 
   const handleStatusChange = async (productId: string, newStatus: ProductStatus) => {
     try {
-      const payload: any = { status: newStatus };
-      if (newStatus === 'sold') {
+      const normalized = normalizeProductStatus(newStatus);
+      const payload: any = { status: normalized };
+      if (normalized === 'sold') {
         payload.inventory_quantity = 0;
       }
       await updateProduct(productId, payload);
-      setSuccessMsg(`Product status changed to ${newStatus}`);
+      setSuccessMsg(`Product status changed to ${PRODUCT_STATUS_LABELS[normalized] || normalized}`);
       fetchProducts();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to update status');
@@ -162,7 +170,7 @@ export default function AdminProductsPage() {
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                {st === 'All' ? 'All Products' : st === 'active' ? 'Published' : st}
+                {st === 'All' ? 'All Products' : PRODUCT_STATUS_LABELS[st as ProductStatus] || st}
               </button>
             );
           })}
@@ -315,7 +323,7 @@ export default function AdminProductsPage() {
                         <select
                           value={prod.status}
                           onChange={(e) =>
-                            handleStatusChange(prod.id, e.target.value as ProductStatus)
+                            handleStatusChange(prod.id, normalizeProductStatus(e.target.value))
                           }
                           className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border focus:outline-none cursor-pointer ${
                             prod.status === 'active'

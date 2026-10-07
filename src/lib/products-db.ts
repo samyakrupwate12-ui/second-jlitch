@@ -1,5 +1,29 @@
 import { supabase } from '@/lib/supabase';
-import { DbProduct, DbProductImage, ProductStatus, ProductType } from '@/types/db';
+import { DbProduct, DbProductImage, ProductStatus, ProductType, PRODUCT_STATUS_LABELS } from '@/types/db';
+
+export { PRODUCT_STATUS_LABELS };
+
+/**
+ * Ensures status sent to Supabase is strictly one of 'draft' | 'active' | 'sold' | 'archived'
+ */
+export function normalizeProductStatus(status?: string | null): ProductStatus {
+  if (!status) return 'draft';
+  const s = status.trim().toLowerCase();
+  if (s === 'active' || s === 'published' || s === 'publish') return 'active';
+  if (s === 'sold') return 'sold';
+  if (s === 'archived') return 'archived';
+  return 'draft';
+}
+
+/**
+ * Ensures product_type sent to Supabase is strictly one of 'new' | 'pre-loved'
+ */
+export function normalizeProductType(type?: string | null): ProductType {
+  if (!type) return 'new';
+  const t = type.trim().toLowerCase();
+  if (t === 'pre-loved' || t === 'preloved') return 'pre-loved';
+  return 'new';
+}
 
 export interface ProductFormData {
   name: string;
@@ -171,6 +195,9 @@ export async function createProduct(
   formData: ProductFormData,
   images: ProductImageItem[]
 ): Promise<DbProduct> {
+  const normalizedStatus = normalizeProductStatus(formData.status);
+  const normalizedType = normalizeProductType(formData.product_type);
+
   // 1. Insert product record
   const { data: newProd, error: prodErr } = await supabase
     .from('products')
@@ -180,7 +207,7 @@ export async function createProduct(
         slug: formData.slug.trim(),
         description: formData.description?.trim() || null,
         category: formData.category,
-        product_type: formData.product_type,
+        product_type: normalizedType,
         brand: formData.brand?.trim() || null,
         size: formData.size?.trim() || null,
         condition: formData.condition?.trim() || null,
@@ -189,7 +216,7 @@ export async function createProduct(
         price: formData.price,
         original_price: formData.original_price,
         inventory_quantity: formData.inventory_quantity,
-        status: formData.status,
+        status: normalizedStatus,
         is_featured: formData.is_featured,
         is_catalog_visible: formData.is_catalog_visible,
       },
@@ -233,7 +260,7 @@ export async function updateProduct(
   if (formData.slug !== undefined) updatePayload.slug = formData.slug.trim();
   if (formData.description !== undefined) updatePayload.description = formData.description?.trim() || null;
   if (formData.category !== undefined) updatePayload.category = formData.category;
-  if (formData.product_type !== undefined) updatePayload.product_type = formData.product_type;
+  if (formData.product_type !== undefined) updatePayload.product_type = normalizeProductType(formData.product_type);
   if (formData.brand !== undefined) updatePayload.brand = formData.brand?.trim() || null;
   if (formData.size !== undefined) updatePayload.size = formData.size?.trim() || null;
   if (formData.condition !== undefined) updatePayload.condition = formData.condition?.trim() || null;
@@ -242,16 +269,14 @@ export async function updateProduct(
   if (formData.price !== undefined) updatePayload.price = formData.price;
   if (formData.original_price !== undefined) updatePayload.original_price = formData.original_price;
   if (formData.inventory_quantity !== undefined) updatePayload.inventory_quantity = formData.inventory_quantity;
-  if (formData.status !== undefined) updatePayload.status = formData.status;
+  if (formData.status !== undefined) updatePayload.status = normalizeProductStatus(formData.status);
   if (formData.is_featured !== undefined) updatePayload.is_featured = formData.is_featured;
   if (formData.is_catalog_visible !== undefined) updatePayload.is_catalog_visible = formData.is_catalog_visible;
 
-  const { data: updatedProd, error: updateErr } = await supabase
+  const { error: updateErr } = await supabase
     .from('products')
     .update(updatePayload)
-    .eq('id', productId)
-    .select()
-    .single();
+    .eq('id', productId);
 
   if (updateErr) {
     console.error('Error updating product:', updateErr);
@@ -267,7 +292,68 @@ export async function updateProduct(
   }
 
   const fullProd = await getProductByIdOrSlug(productId);
-  return fullProd || updatedProd;
+  return fullProd || ({ id: productId, ...updatePayload } as DbProduct);
+}
+
+/**
+ * Update ONLY the is_catalog_visible field for a product
+ * DIAGNOSTIC LOGGING ACTIVE — remove after confirming fix
+ */
+export async function updateProductVisibility(
+  productId: string,
+  isCatalogVisible: boolean
+): Promise<void> {
+  // 1. Verify authenticated Supabase session
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    console.error('[CATALOGUE UPDATE] No authenticated user session found:', authError?.message);
+    throw new Error('Not authenticated. Please log in as an administrator.');
+  }
+
+  const newVisibility = Boolean(isCatalogVisible);
+
+  // 2. Exact payload — ONLY is_catalog_visible
+  const payload = {
+    is_catalog_visible: newVisibility,
+  };
+
+  // 3. Pre-update attempt log
+  console.log('CATALOGUE UPDATE ATTEMPT', {
+    productId,
+    currentUserId: user.id,
+    payload,
+  });
+
+  // 4. Supabase call — single field, no extra fields, no RETURNING clause
+  const { error } = await supabase
+    .from('products')
+    .update(payload)
+    .eq('id', productId);
+
+  if (error) {
+    // 5. Full enumerated error log — every field captured explicitly
+    console.error('CATALOGUE UPDATE ERROR', {
+      productId,
+      currentUserId: user.id,
+      currentUserEmail: user.email,
+      payload,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorDetails: error?.details,
+      errorHint: error?.hint,
+      errorName: (error as any)?.name,
+      errorString: String(error),
+      errorJson: JSON.stringify(error),
+    });
+    throw new Error(`Failed to update product: ${error.message}`);
+  }
+
+  console.log('CATALOGUE UPDATE SUCCESS', {
+    productId,
+    currentUserId: user.id,
+    payload,
+  });
 }
 
 /**

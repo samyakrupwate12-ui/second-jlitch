@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { getAllProductsAdmin, updateProduct } from '@/lib/products-db';
-import { DbProduct } from '@/types/db';
+import { getAllProductsAdmin, updateProduct, updateProductVisibility } from '@/lib/products-db';
+import { DbProduct, PRODUCT_STATUS_LABELS } from '@/types/db';
 import {
   Boxes,
   Eye,
@@ -64,7 +64,7 @@ export default function AdminInventoryPage() {
   const handleToggleVisibility = async (prod: DbProduct) => {
     setUpdatingId(prod.id);
     try {
-      await updateProduct(prod.id, { is_catalog_visible: !prod.is_catalog_visible });
+      await updateProductVisibility(prod.id, !prod.is_catalog_visible);
       setSuccessMsg(`Toggled catalog visibility for "${prod.name}"`);
       fetchInventory();
     } catch (err: any) {
@@ -177,7 +177,7 @@ export default function AdminInventoryPage() {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          {prod.status === 'active' ? 'Published' : prod.status}
+                          {PRODUCT_STATUS_LABELS[prod.status] || prod.status}
                         </span>
                       </td>
 

@@ -6,11 +6,14 @@ import {
   DbProduct,
   ProductStatus,
   ProductType,
+  PRODUCT_STATUS_LABELS,
 } from '@/types/db';
 import {
   createProduct,
   updateProduct,
   generateSlug,
+  normalizeProductStatus,
+  normalizeProductType,
   ProductFormData,
   ProductImageItem,
 } from '@/lib/products-db';
@@ -47,7 +50,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
   const [description, setDescription] = useState(initialProduct?.description || '');
   const [category, setCategory] = useState(initialProduct?.category || 'Tops');
   const [productType, setProductType] = useState<ProductType>(
-    initialProduct?.product_type?.toLowerCase() === 'pre-loved' ? 'pre-loved' : 'new'
+    normalizeProductType(initialProduct?.product_type)
   );
   const [brand, setBrand] = useState(initialProduct?.brand || 'Second JLITCH');
   const [size, setSize] = useState(initialProduct?.size || 'Size M');
@@ -59,9 +62,45 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
   const [originalPrice, setOriginalPrice] = useState<number | ''>(initialProduct?.original_price ?? '');
   const [inventoryQuantity, setInventoryQuantity] = useState<number | ''>(initialProduct?.inventory_quantity ?? 1);
 
-  const [status, setStatus] = useState<ProductStatus>(initialProduct?.status || 'draft');
+  const [status, setStatus] = useState<ProductStatus>(
+    normalizeProductStatus(initialProduct?.status)
+  );
   const [isFeatured, setIsFeatured] = useState<boolean>(initialProduct?.is_featured ?? false);
   const [isCatalogVisible, setIsCatalogVisible] = useState<boolean>(initialProduct?.is_catalog_visible ?? true);
+
+  // Sync state if initialProduct prop changes
+  React.useEffect(() => {
+    if (initialProduct) {
+      setName(initialProduct.name || '');
+      setSlug(initialProduct.slug || '');
+      setDescription(initialProduct.description || '');
+      setCategory(initialProduct.category || 'Tops');
+      setProductType(normalizeProductType(initialProduct.product_type));
+      setBrand(initialProduct.brand || 'Second JLITCH');
+      setSize(initialProduct.size || 'Size M');
+      setCondition(initialProduct.condition || 'Like New');
+      setColor(initialProduct.color || 'Blue');
+      setMaterial(initialProduct.material || 'Linen Blend');
+      setPrice(initialProduct.price ?? 999);
+      setOriginalPrice(initialProduct.original_price ?? '');
+      setInventoryQuantity(initialProduct.inventory_quantity ?? 1);
+      setStatus(normalizeProductStatus(initialProduct.status));
+      setIsFeatured(initialProduct.is_featured ?? false);
+      setIsCatalogVisible(initialProduct.is_catalog_visible ?? true);
+      if (initialProduct.product_images) {
+        setImages(
+          [...initialProduct.product_images]
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            .map((img) => ({
+              id: img.id,
+              image_url: img.image_url,
+              sort_order: img.sort_order,
+              is_primary: img.is_primary,
+            }))
+        );
+      }
+    }
+  }, [initialProduct]);
 
   // Initial Images
   const initialImagesList: ProductImageItem[] = initialProduct?.product_images
@@ -105,7 +144,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
       return;
     }
 
-    const targetStatus = overrideStatus || status;
+    const targetStatus = normalizeProductStatus(overrideStatus || status);
 
     const formData: ProductFormData = {
       name: name.trim(),
@@ -457,7 +496,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
               <label className="block text-xs font-semibold text-slate-700 mb-1">Product Status</label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as ProductStatus)}
+                onChange={(e) => setStatus(normalizeProductStatus(e.target.value))}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white"
               >
                 <option value="draft">Draft</option>
@@ -539,7 +578,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
               <div className="flex justify-between py-1 border-b border-slate-800">
                 <span>Status:</span>
                 <span className="uppercase font-mono font-semibold text-white">
-                  {status === 'active' ? 'Published' : status}
+                  {PRODUCT_STATUS_LABELS[status] || status}
                 </span>
               </div>
             </div>
