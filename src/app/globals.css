@@ -60,3 +60,57 @@ html, body {
   max-width: 100vw;
   overflow-x: hidden;
 }
+
+/* Shared typography for the store's policy and support pages. Keeping this
+   outside the typography plugin gives every policy the same rhythm. */
+.legal-content {
+  max-width: 68ch;
+  color: #475569;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.legal-content h2 {
+  margin: 2.25rem 0 0.7rem;
+  color: #0f172a;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.legal-content h2:first-child {
+  margin-top: 0;
+}
+
+.legal-content p {
+  margin: 0 0 1rem;
+}
+
+.legal-content ul,
+.legal-content ol {
+  margin: 0 0 1.15rem;
+  padding-left: 1.35rem;
+}
+
+.legal-content li {
+  margin: 0.35rem 0;
+  padding-left: 0.2rem;
+}
+
+.legal-content a {
+  color: #0369a1;
+  text-decoration: none;
+}
+
+.legal-content a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 640px) {
+  .legal-content {
+    font-size: 0.975rem;
+  }
+}
