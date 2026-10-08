@@ -18,6 +18,8 @@ export default function SingleProductPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(true);
   const { items, save, ready, busy } = useShop();
   const isWishlisted = items.some(i => i.kind === 'wishlist' && i.product_id === product?.id);
@@ -26,24 +28,31 @@ export default function SingleProductPage() {
 
   useEffect(() => {
     if (!idOrSlug) return;
+    let active = true;
     async function loadData() {
       try {
         setLoading(true);
+        setError('');
+        setProduct(null);
         // Try fetching from Supabase
         const dbProd = await getProductByIdOrSlug(idOrSlug);
+        if (!active) return;
         if (dbProd && dbProd.is_catalog_visible && ['active', 'sold'].includes(dbProd.status)) {
           const mapped = mapDbProductToProduct(dbProd);
           setProduct(mapped);
           setSelectedImage(mapped.image);
         } else { setProduct(null); }
       } catch (err) {
-        console.error('Error loading product detail:', err);
+        if (active) setError(err instanceof Error ? err.message : 'Unable to load product.');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
-    loadData();
-  }, [idOrSlug]);
+    void loadData();
+    const refresh = () => setAttempt(value => value + 1);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, [idOrSlug, attempt]);
 
   if (loading) {
     return (
@@ -52,6 +61,8 @@ export default function SingleProductPage() {
       </div>
     );
   }
+
+  if (error) return <div role="alert" className="text-center py-20"><p>{error}</p><button className="mt-4 text-sky-700 underline" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>;
 
   if (!product) {
     return (
@@ -123,12 +134,14 @@ export default function SingleProductPage() {
                 {imagesList.map((imgUrl, idx) => (
                   <button
                     key={idx}
+                    aria-label={`View image ${idx + 1}`}
+                    aria-pressed={selectedImage === imgUrl}
                     onClick={() => setSelectedImage(imgUrl)}
                     className={`relative w-20 h-24 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
                       selectedImage === imgUrl ? 'border-sky-500 scale-105 shadow-md' : 'border-slate-200 opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <Image src={imgUrl} alt={`Thumbnail ${idx + 1}`} fill className="object-cover" />
+                    <Image src={imgUrl} alt={`Thumbnail ${idx + 1}`} fill sizes="80px" className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -201,7 +214,7 @@ export default function SingleProductPage() {
               <div>
                 <span className="text-slate-400 block font-medium">Inventory</span>
                 <span className="font-semibold text-slate-800">
-                  {isSoldOut ? '0 (Out of Stock)' : `${product.inventoryQuantity || 1} available`}
+                  {isSoldOut ? '0 (Out of Stock)' : `${availableQuantity(product)} available`}
                 </span>
               </div>
             </div>

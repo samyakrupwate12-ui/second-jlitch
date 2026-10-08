@@ -10,7 +10,7 @@ export function mapDbProductToProduct(dbProd: DbProduct): Product {
   // Find primary image or fall back to first image or placeholder image
   const primaryImg = sortedImages.find((img) => img.is_primary)?.image_url 
     || sortedImages[0]?.image_url 
-    || '/images/products/linen-blend-blouse.jpg';
+    || '/images/product-placeholder.svg';
 
   const allImages = sortedImages.length > 0
     ? sortedImages.map((img) => img.image_url)
@@ -22,7 +22,7 @@ export function mapDbProductToProduct(dbProd: DbProduct): Product {
     price: Number(dbProd.price) || 0,
     image: primaryImg,
     category: dbProd.category || 'Tops',
-    condition: dbProd.condition || 'Like New',
+    condition: dbProd.condition || '',
     size: dbProd.size || undefined,
     isNewEdit: dbProd.product_type?.toLowerCase() === 'new' || dbProd.is_featured,
     

@@ -11,23 +11,26 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 export default function Home() {
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     async function loadHomeProducts() {
       try {
+        setError(false);
         const dbItems = await getPublicProducts();
         if (dbItems && dbItems.length > 0) {
           const mapped = dbItems.map(mapDbProductToProduct);
-          const featured = mapped.filter((p) => p.isNewEdit || p.isFeatured);
+          const featured = mapped.filter((p) => p.isFeatured);
           setProducts(featured.length > 0 ? featured.slice(0, 3) : mapped.slice(0, 3));
         }
-      } catch (err) {
-        console.error('Error fetching homepage products:', err);
+      } catch {
+        setError(true);
       }
     }
     loadHomeProducts();
-  }, []);
+  }, [attempt]);
 
   return (
     <div className="flex-grow flex flex-col">
@@ -36,6 +39,7 @@ export default function Home() {
 
       {/* Product Preview Section ("THE NEW EDIT") matching Reference Screenshot 3 */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-8">
+        {error && <div role="alert" className="text-center text-sm text-slate-600">Unable to load featured pieces. <button className="underline" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>}
         <ProductGrid
           products={products}
           title="THE NEW EDIT"

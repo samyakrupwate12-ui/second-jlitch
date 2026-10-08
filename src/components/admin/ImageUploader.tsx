@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useRef } from 'react';
+import { validateProductImage } from '@/lib/catalogue';
+import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ProductImageItem } from '@/lib/products-db';
-import { Upload, X, Star, ArrowLeft, ArrowRight, ImagePlus } from 'lucide-react';
+import { X, Star, ArrowLeft, ArrowRight, ImagePlus } from 'lucide-react';
 
 interface ImageUploaderProps {
   images: ProductImageItem[];
@@ -12,14 +13,25 @@ interface ImageUploaderProps {
 }
 
 export default function ImageUploader({ images, onChange, disabled = false }: ImageUploaderProps) {
+  const [error, setError] = useState('');
+  const previews = useRef(new Set<string>());
+  useEffect(() => () => { previews.current.forEach(url => URL.revokeObjectURL(url)); }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
     const filesArray = Array.from(e.target.files);
+    const invalid = filesArray.map(validateProductImage).find(Boolean);
+    if (invalid || images.length + filesArray.length > 20) {
+      setError(invalid || 'Use at most 20 images per product.');
+      e.target.value = '';
+      return;
+    }
+    setError('');
+    const previewUrl = (file: File) => { const url = URL.createObjectURL(file); previews.current.add(url); return url; };
     const newItems: ProductImageItem[] = filesArray.map((file, idx) => ({
-      image_url: URL.createObjectURL(file),
+      image_url: previewUrl(file),
       file,
       sort_order: images.length + idx,
       is_primary: images.length === 0 && idx === 0, // First image uploaded becomes primary if no images exist
@@ -39,6 +51,8 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
   };
 
   const handleRemoveImage = (index: number) => {
+    const url = images[index].image_url;
+    if (previews.current.delete(url)) URL.revokeObjectURL(url);
     const updated = images.filter((_, i) => i !== index);
     // Re-index sort order
     const reindexed = updated.map((img, i) => ({ ...img, sort_order: i }));
@@ -84,6 +98,7 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
         </span>
       </div>
 
+      {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
       {/* Grid of Preview Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {images.map((img, idx) => (
@@ -99,6 +114,7 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
                 src={img.image_url}
                 alt={`Product Image ${idx + 1}`}
                 fill
+                sizes="(max-width: 640px) 45vw, 200px"
                 className="object-cover"
                 unoptimized={img.image_url.startsWith('blob:')}
               />
@@ -112,7 +128,7 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
               )}
 
               {/* Action Overlay */}
-              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+              <div className="absolute inset-0 bg-slate-900/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex flex-col justify-between p-2">
                 <div className="flex justify-end gap-1">
                   <button
                     type="button"
@@ -120,6 +136,7 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
                     disabled={disabled}
                     className="p-1.5 rounded-full bg-white/90 text-slate-700 hover:text-rose-600 hover:bg-white transition-colors"
                     title="Delete Image"
+                    aria-label={`Remove image ${idx + 1}`}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -133,6 +150,7 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
                     disabled={disabled || idx === 0}
                     className="p-1.5 rounded-full bg-white/90 text-slate-700 hover:bg-white disabled:opacity-40 transition-colors"
                     title="Move Left"
+                    aria-label={`Move image ${idx + 1} left`}
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                   </button>
@@ -156,6 +174,7 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
                     disabled={disabled || idx === images.length - 1}
                     className="p-1.5 rounded-full bg-white/90 text-slate-700 hover:bg-white disabled:opacity-40 transition-colors"
                     title="Move Right"
+                    aria-label={`Move image ${idx + 1} right`}
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
@@ -191,7 +210,8 @@ export default function ImageUploader({ images, onChange, disabled = false }: Im
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label="Upload product images"
         multiple
         onChange={handleFileSelect}
         className="hidden"
