@@ -120,14 +120,10 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  disabled
-                  className="w-full py-3.5 px-4 rounded-full bg-slate-900/40 text-white font-medium text-xs tracking-widest uppercase cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <span>CHECKOUT COMING SOON</span>
+                <Link href="/checkout" className="w-full py-3.5 px-4 rounded-full bg-slate-900 text-white font-medium text-xs tracking-widest uppercase flex items-center justify-center gap-2 hover:bg-sky-700">
+                  <span>Continue to checkout</span>
                   <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                </Link>
 
                 <div className="flex items-center gap-2 text-[11px] text-slate-400 justify-center">
                   <ShieldCheck className="w-3.5 h-3.5 text-sky-500" />
