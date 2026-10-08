@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, ShoppingBag, User, Menu, X } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+import { useShop } from '@/context/ShopContext';
 
 export default function Header() {
   const pathname = usePathname();
+  const { cartCount } = useShop();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Do not render customer header inside admin section
@@ -68,7 +70,7 @@ export default function Header() {
             >
               <ShoppingBag className="w-5 h-5 stroke-[1.5]" />
               <span className="absolute top-1 right-1 w-4 h-4 bg-sky-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                2
+                {cartCount}
               </span>
             </Link>
 
@@ -92,7 +94,7 @@ export default function Header() {
             >
               <ShoppingBag className="w-5 h-5 stroke-[1.5]" />
               <span className="absolute top-1 right-1 w-4 h-4 bg-sky-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                2
+                {cartCount}
               </span>
             </Link>
 

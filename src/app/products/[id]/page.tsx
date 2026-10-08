@@ -6,7 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getProductByIdOrSlug } from '@/lib/products-db';
 import { mapDbProductToProduct } from '@/lib/productMapper';
-import { PLACEHOLDER_PRODUCTS } from '@/lib/placeholder-data';
+import { useShop } from '@/context/ShopContext';
+import { availableQuantity } from '@/lib/shopping';
 import { Product } from '@/types/product';
 import SkyBackground from '@/components/ui/SkyBackground';
 import { ArrowLeft, ShoppingBag, Heart, ShieldCheck, Sparkles, Check, Loader2 } from 'lucide-react';
@@ -18,8 +19,10 @@ export default function SingleProductPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [addedToCart, setAddedToCart] = useState(false);
+  const { items, save, ready, busy } = useShop();
+  const isWishlisted = items.some(i => i.kind === 'wishlist' && i.product_id === product?.id);
+  const cartQuantity = items.find(i => i.kind === 'cart' && i.product_id === product?.id)?.quantity ?? 0;
+  const addedToCart = cartQuantity > 0;
 
   useEffect(() => {
     if (!idOrSlug) return;
@@ -28,20 +31,11 @@ export default function SingleProductPage() {
         setLoading(true);
         // Try fetching from Supabase
         const dbProd = await getProductByIdOrSlug(idOrSlug);
-        if (dbProd) {
+        if (dbProd && dbProd.is_catalog_visible && ['active', 'sold'].includes(dbProd.status)) {
           const mapped = mapDbProductToProduct(dbProd);
           setProduct(mapped);
           setSelectedImage(mapped.image);
-        } else {
-          // Fallback to placeholder product list matching id or slug
-          const placeholderMatch = PLACEHOLDER_PRODUCTS.find(
-            (p) => p.id === idOrSlug || p.name.toLowerCase().replace(/\s+/g, '-') === idOrSlug
-          );
-          if (placeholderMatch) {
-            setProduct(placeholderMatch);
-            setSelectedImage(placeholderMatch.image);
-          }
-        }
+        } else { setProduct(null); }
       } catch (err) {
         console.error('Error loading product detail:', err);
       } finally {
@@ -76,7 +70,7 @@ export default function SingleProductPage() {
     );
   }
 
-  const isSoldOut = product.inventoryQuantity === 0 || product.status === 'sold';
+  const isSoldOut = availableQuantity(product) === 0;
   const imagesList = product.images && product.images.length > 0 ? product.images : [product.image];
 
   return (
@@ -233,7 +227,8 @@ export default function SingleProductPage() {
               ) : (
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setAddedToCart(true)}
+                    onClick={() => void save(product.id, 'cart', cartQuantity + 1)}
+                    disabled={!ready || busy || cartQuantity >= availableQuantity(product)}
                     className="flex-1 py-4 rounded-full bg-slate-900 hover:bg-sky-600 text-white font-semibold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 cursor-pointer"
                   >
                     {addedToCart ? (
@@ -250,7 +245,10 @@ export default function SingleProductPage() {
                   </button>
 
                   <button
-                    onClick={() => setIsWishlisted(!isWishlisted)}
+                    onClick={() => void save(product.id, 'wishlist', isWishlisted ? 0 : 1)}
+                    disabled={!ready || busy}
+                    aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                    aria-pressed={isWishlisted}
                     className={`p-4 rounded-full border transition-colors cursor-pointer ${
                       isWishlisted
                         ? 'border-rose-200 bg-rose-50 text-rose-500'

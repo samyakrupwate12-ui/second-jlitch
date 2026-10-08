@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useShop } from '@/context/ShopContext';
 import { Home, LayoutGrid, Heart, ShoppingBag, User } from 'lucide-react';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const { cartCount } = useShop();
 
   if (pathname?.startsWith('/admin')) {
     return null;
@@ -15,7 +17,7 @@ export default function MobileBottomNav() {
     { label: 'Home', href: '/', icon: Home },
     { label: 'Shop', href: '/products', icon: LayoutGrid },
     { label: 'Wishlist', href: '/wishlist', icon: Heart },
-    { label: 'Cart', href: '/cart', icon: ShoppingBag, badge: 2 },
+    { label: 'Cart', href: '/cart', icon: ShoppingBag, badge: cartCount },
     { label: 'Account', href: '/account', icon: User },
   ];
 

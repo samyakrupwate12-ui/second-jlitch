@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useShop } from '@/context/ShopContext';
 import Link from 'next/link';
 import ProductCard from '@/components/product/ProductCard';
-import { PLACEHOLDER_PRODUCTS } from '@/lib/placeholder-data';
+
 import { Heart, ArrowRight } from 'lucide-react';
 import SkyBackground from '@/components/ui/SkyBackground';
 
 export default function WishlistPage() {
-  // Demo wishlist items initially containing 2 placeholder items
-  const [wishlistItems, setWishlistItems] = useState(PLACEHOLDER_PRODUCTS.slice(0, 2));
+  const { items, products, ready, busy, save } = useShop();
+  const wishlistItems = items.filter(i => i.kind === 'wishlist');
 
   return (
     <div className="flex-grow flex flex-col pb-12">
@@ -32,24 +32,19 @@ export default function WishlistPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-8">
-        {wishlistItems.length > 0 ? (
+        {!ready ? <p role="status" className="text-center p-12">Loading your wishlist…</p> : wishlistItems.length > 0 ? (
           <div>
             <div className="flex items-center justify-between mb-6">
               <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
                 {wishlistItems.length} Saved {wishlistItems.length === 1 ? 'Item' : 'Items'}
               </span>
-              <button
-                onClick={() => setWishlistItems([])}
-                className="text-xs text-slate-400 hover:text-rose-500 transition-colors"
-              >
-                Clear Wishlist
-              </button>
+
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {wishlistItems.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+              {wishlistItems.map(item => products[item.product_id] ? (
+                <ProductCard key={item.product_id} product={products[item.product_id]} />
+              ) : <div key={item.product_id} className="rounded-2xl bg-white p-5"><p>This piece is no longer available.</p><button disabled={busy} onClick={() => void save(item.product_id, 'wishlist', 0)} className="mt-3 text-rose-600 underline">Remove from wishlist</button></div>)}
             </div>
           </div>
         ) : (

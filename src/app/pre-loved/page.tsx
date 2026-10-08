@@ -6,7 +6,7 @@ import ProductCard from '@/components/product/ProductCard';
 import SkyBackground from '@/components/ui/SkyBackground';
 import { getPreLovedPublicProducts } from '@/lib/products-db';
 import { mapDbProductToProduct } from '@/lib/productMapper';
-import { PLACEHOLDER_PRODUCTS } from '@/lib/placeholder-data';
+
 import { Product } from '@/types/product';
 
 export default function PreLovedPage() {
@@ -31,15 +31,11 @@ export default function PreLovedPage() {
         if (dbItems && dbItems.length > 0) {
           setProducts(dbItems.map(mapDbProductToProduct));
         } else {
-          // Fall back to pre-loved subset from placeholders if no db items exist yet
-          const fallbackList = PLACEHOLDER_PRODUCTS.filter(
-            (p) => p.condition === 'Good Condition' || p.condition === 'Excellent'
-          );
-          setProducts(fallbackList);
+          setProducts([]);
         }
       } catch (err) {
         console.error('Error fetching pre-loved items:', err);
-        setProducts(PLACEHOLDER_PRODUCTS);
+        setProducts([]);
       } finally {
         setLoading(false);
       }

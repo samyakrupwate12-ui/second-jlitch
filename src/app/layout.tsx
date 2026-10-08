@@ -4,6 +4,7 @@ import Header from '@/components/layout/Header';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import Footer from '@/components/layout/Footer';
 import './globals.css';
+import { ShopProvider } from '@/context/ShopContext';
 
 const playfair = Playfair_Display({
   variable: '--font-serif',
@@ -33,10 +34,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${jakarta.variable}`}>
       <body className="min-h-screen flex flex-col bg-[#F6FAFE] text-slate-800 antialiased selection:bg-sky-200 selection:text-slate-900 pb-20 md:pb-0">
+        <ShopProvider>
         <Header />
         <main className="flex-grow flex flex-col">{children}</main>
         <Footer />
         <MobileBottomNav />
+        </ShopProvider>
       </body>
     </html>
   );

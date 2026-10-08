@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal, Shirt, Sparkles, Loader2 } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
-import { PLACEHOLDER_PRODUCTS } from '@/lib/placeholder-data';
+
 import { getPublicProducts } from '@/lib/products-db';
 import { mapDbProductToProduct } from '@/lib/productMapper';
 import { Product } from '@/types/product';
@@ -34,11 +34,11 @@ export default function ProductsPage() {
         if (dbItems && dbItems.length > 0) {
           setProducts(dbItems.map(mapDbProductToProduct));
         } else {
-          setProducts(PLACEHOLDER_PRODUCTS);
+          setProducts([]);
         }
       } catch (err) {
         console.error('Error fetching public products:', err);
-        setProducts(PLACEHOLDER_PRODUCTS);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
