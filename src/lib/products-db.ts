@@ -1,5 +1,6 @@
+import { validateProductImage } from '@/lib/catalogue';
 import { supabase } from '@/lib/supabase';
-import { DbProduct, DbProductImage, ProductStatus, ProductType, PRODUCT_STATUS_LABELS } from '@/types/db';
+import { DbProduct, ProductStatus, ProductType, PRODUCT_STATUS_LABELS } from '@/types/db';
 
 export { PRODUCT_STATUS_LABELS };
 
@@ -57,14 +58,16 @@ export interface ProductImageItem {
  * Upload an image file to Supabase Storage bucket `product-images`
  */
 export async function uploadImageToStorage(file: File, productId: string): Promise<string> {
+  const validationError = validateProductImage(file);
+  if (validationError) throw new Error(validationError);
   const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const filePath = `products/${productId}/${Date.now()}_${sanitizedFileName}`;
+  const filePath = `products/${productId}/${crypto.randomUUID()}_${sanitizedFileName}`;
 
   const { data, error } = await supabase.storage
     .from('product-images')
     .upload(filePath, file, {
       cacheControl: '3600',
-      upsert: true,
+      upsert: false,
     });
 
   if (error) {
@@ -82,74 +85,40 @@ export async function uploadImageToStorage(file: File, productId: string): Promi
 /**
  * Fetch all catalog-visible products for public customer view
  */
-export async function getPublicProducts(): Promise<DbProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*, product_images(*)')
-      .eq('is_catalog_visible', true)
-      .in('status', ['active', 'sold'])
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching public products:', error);
-      return [];
-    }
-
-    return (data as DbProduct[]) || [];
-  } catch (err) {
-    console.error('Failed to query public products:', err);
-    return [];
-  }
+export async function getPublicProducts(preLovedOnly = false): Promise<DbProduct[]> {
+  let query = supabase.from('products').select('*, product_images(*)')
+    .eq('is_catalog_visible', true).in('status', ['active', 'sold']);
+  if (preLovedOnly) query = query.eq('product_type', 'pre-loved');
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) throw new Error('Unable to load the collection. Please try again.');
+  return (data as DbProduct[]) || [];
 }
 
-/**
- * Fetch Pre-Loved catalog-visible products for customer /pre-loved page
- */
 export async function getPreLovedPublicProducts(): Promise<DbProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*, product_images(*)')
-      .in('product_type', ['pre-loved', 'Pre-Loved'])
-      .eq('is_catalog_visible', true)
-      .in('status', ['active', 'sold'])
-      .order('created_at', { ascending: false });
+  return getPublicProducts(true);
+}
 
-    if (error) {
-      console.error('Error fetching pre-loved products:', error);
-      return [];
-    }
+/** Admin callers also use this lookup; RLS limits customers to published pieces. */
+export async function getProductByIdOrSlug(idOrSlug: string): Promise<DbProduct | null> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+  const { data, error } = await supabase.from('products').select('*, product_images(*)')
+    .eq(isUuid ? 'id' : 'slug', idOrSlug).maybeSingle();
+  if (error) throw new Error('Unable to load this product. Please try again.');
+  return data as DbProduct | null;
+}
 
-    return (data as DbProduct[]) || [];
-  } catch (err) {
-    console.error('Failed to query pre-loved products:', err);
-    return [];
+export class ProductSaveError extends Error {
+  constructor(public productId: string, cause: unknown) {
+    super(`Product details were saved, but saving or refreshing the gallery did not finish. ${cause instanceof Error ? cause.message : 'Please try again.'}`);
+    this.name = 'ProductSaveError';
   }
 }
 
-/**
- * Fetch a single product by ID or Slug
- */
-export async function getProductByIdOrSlug(idOrSlug: string): Promise<DbProduct | null> {
-  try {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
-    
-    let query = supabase.from('products').select('*, product_images(*)');
-    if (isUuid) {
-      query = query.eq('id', idOrSlug);
-    } else {
-      query = query.eq('slug', idOrSlug);
-    }
-
-    const { data, error } = await query.single();
-    if (error || !data) return null;
-
-    return data as DbProduct;
-  } catch (err) {
-    console.error('Error fetching product by ID/Slug:', err);
-    return null;
-  }
+function validateProductData(data: Partial<ProductFormData>) {
+  if (data.price !== undefined && (!Number.isFinite(data.price) || data.price < 0)) throw new Error('Enter a valid non-negative price.');
+  if (data.original_price != null && (!Number.isFinite(data.original_price) || data.original_price < 0)) throw new Error('Enter a valid original price.');
+  if (data.inventory_quantity !== undefined && (!Number.isInteger(data.inventory_quantity) || data.inventory_quantity < 0)) throw new Error('Stock must be a non-negative whole number.');
+  if (data.slug !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(data.slug.trim())) throw new Error('Use lowercase letters, numbers and single hyphens for the slug.');
 }
 
 /**
@@ -195,6 +164,7 @@ export async function createProduct(
   formData: ProductFormData,
   images: ProductImageItem[]
 ): Promise<DbProduct> {
+  validateProductData(formData);
   const normalizedStatus = normalizeProductStatus(formData.status);
   const normalizedType = normalizeProductType(formData.product_type);
 
@@ -236,12 +206,16 @@ export async function createProduct(
 
   // 2. Upload and insert product images
   if (images && images.length > 0) {
-    await syncProductImages(productId, images);
+    try { await syncProductImages(productId, images); }
+    catch (error) { throw new ProductSaveError(productId, error); }
   }
 
   // 3. Return full product with images
-  const fullProd = await getProductByIdOrSlug(productId);
-  return fullProd || newProd;
+  try {
+    const fullProd = await getProductByIdOrSlug(productId);
+    if (!fullProd) throw new Error('Reload the product to check its saved state.');
+    return fullProd;
+  } catch (error) { throw new ProductSaveError(productId, error); }
 }
 
 /**
@@ -252,7 +226,8 @@ export async function updateProduct(
   formData: Partial<ProductFormData>,
   images?: ProductImageItem[]
 ): Promise<DbProduct> {
-  const updatePayload: Record<string, any> = {
+  validateProductData(formData);
+  const updatePayload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
 
@@ -273,9 +248,9 @@ export async function updateProduct(
   if (formData.is_featured !== undefined) updatePayload.is_featured = formData.is_featured;
   if (formData.is_catalog_visible !== undefined) updatePayload.is_catalog_visible = formData.is_catalog_visible;
 
-  const { error: updateErr } = await supabase
+  const { error: updateErr, count } = await supabase
     .from('products')
-    .update(updatePayload)
+    .update(updatePayload, { count: 'exact' })
     .eq('id', productId);
 
   if (updateErr) {
@@ -286,137 +261,74 @@ export async function updateProduct(
     throw new Error(`Failed to update product: ${updateErr.message}`);
   }
 
+  if (count !== 1) throw new Error('Product was not updated. Refresh and check your admin session.');
+
   // Sync images if provided
   if (images) {
-    await syncProductImages(productId, images);
+    try { await syncProductImages(productId, images); }
+    catch (error) { throw new ProductSaveError(productId, error); }
   }
 
-  const fullProd = await getProductByIdOrSlug(productId);
-  return fullProd || ({ id: productId, ...updatePayload } as DbProduct);
+  try {
+    const fullProd = await getProductByIdOrSlug(productId);
+    if (!fullProd) throw new Error('Reload the product to check its saved state.');
+    return fullProd;
+  } catch (error) { throw new ProductSaveError(productId, error); }
 }
 
-/**
- * Update ONLY the is_catalog_visible field for a product
- * DIAGNOSTIC LOGGING ACTIVE — remove after confirming fix
- */
-export async function updateProductVisibility(
-  productId: string,
-  isCatalogVisible: boolean
-): Promise<void> {
-  // 1. Verify authenticated Supabase session
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    console.error('[CATALOGUE UPDATE] No authenticated user session found:', authError?.message);
-    throw new Error('Not authenticated. Please log in as an administrator.');
-  }
-
-  const newVisibility = Boolean(isCatalogVisible);
-
-  // 2. Exact payload — ONLY is_catalog_visible
-  const payload = {
-    is_catalog_visible: newVisibility,
-  };
-
-  // 3. Pre-update attempt log
-  console.log('CATALOGUE UPDATE ATTEMPT', {
-    productId,
-    currentUserId: user.id,
-    payload,
-  });
-
-  // 4. Supabase call — single field, no extra fields, no RETURNING clause
-  const { error } = await supabase
-    .from('products')
-    .update(payload)
-    .eq('id', productId);
-
-  if (error) {
-    // 5. Full enumerated error log — every field captured explicitly
-    console.error('CATALOGUE UPDATE ERROR', {
-      productId,
-      currentUserId: user.id,
-      currentUserEmail: user.email,
-      payload,
-      errorMessage: error?.message,
-      errorCode: error?.code,
-      errorDetails: error?.details,
-      errorHint: error?.hint,
-      errorName: (error as any)?.name,
-      errorString: String(error),
-      errorJson: JSON.stringify(error),
-    });
-    throw new Error(`Failed to update product: ${error.message}`);
-  }
-
-  console.log('CATALOGUE UPDATE SUCCESS', {
-    productId,
-    currentUserId: user.id,
-    payload,
-  });
+/** Update visibility without changing stock or publication status. */
+export async function updateProductVisibility(productId: string, isCatalogVisible: boolean): Promise<void> {
+  const { error, count } = await supabase.from('products')
+    .update({ is_catalog_visible: isCatalogVisible }, { count: 'exact' }).eq('id', productId);
+  if (error) throw new Error(`Failed to update visibility: ${error.message}`);
+  if (count !== 1) throw new Error('Visibility was not updated. Refresh and check your admin session.');
 }
 
-/**
- * Delete a product and its images
- */
+async function removeStoredImages(productId: string, urls: string[]) {
+  const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/${productId}/`;
+  const paths = [...new Set(urls.filter(url => url.startsWith(prefix)).map(url =>
+    `products/${productId}/${decodeURIComponent(url.slice(prefix.length))}`
+  ))].filter(path => !path.split('/').includes('..'));
+  if (!paths.length) return;
+  const { error } = await supabase.storage.from('product-images').remove(paths);
+  if (error) throw new Error('The changes were saved, but unused image files could not be removed from storage.');
+}
+
 export async function deleteProduct(productId: string): Promise<void> {
-  // Delete image records first
-  await supabase.from('product_images').delete().eq('product_id', productId);
-  
-  const { error } = await supabase.from('products').delete().eq('id', productId);
-  if (error) {
-    throw new Error(`Failed to delete product: ${error.message}`);
-  }
+  const product = await getProductByIdOrSlug(productId);
+  if (!product) throw new Error('Product not found. Refresh the list.');
+  // Image records cascade with the product, so a denied delete cannot strip its gallery.
+  const { error, count } = await supabase.from('products').delete({ count: 'exact' }).eq('id', productId);
+  if (error) throw new Error(`Failed to delete product: ${error.message}`);
+  if (count !== 1) throw new Error('Product was not deleted. Check your admin session.');
+  await removeStoredImages(productId, (product.product_images || []).map(image => image.image_url));
 }
 
-/**
- * Sync product images: upload new files, insert/update records, delete removed ones
- */
 async function syncProductImages(productId: string, images: ProductImageItem[]) {
-  // Get existing images from database
-  const { data: existingDbImages } = await supabase
-    .from('product_images')
-    .select('*')
-    .eq('product_id', productId);
-
-  const existingIds = new Set((existingDbImages || []).map((img) => img.id));
-  const keepIds = new Set(images.filter((img) => img.id).map((img) => img.id));
-
-  // Identify images to delete
-  const toDelete = (existingDbImages || []).filter((img) => !keepIds.has(img.id));
-  for (const imgToDelete of toDelete) {
-    await supabase.from('product_images').delete().eq('id', imgToDelete.id);
-  }
-
-  // Upload new files and prepare rows for insert/update
-  for (let idx = 0; idx < images.length; idx++) {
-    const img = images[idx];
-    let finalUrl = img.image_url;
-
-    if (img.file) {
-      finalUrl = await uploadImageToStorage(img.file, productId);
-    }
-
-    if (img.id && existingIds.has(img.id)) {
-      // Update existing record
-      await supabase
-        .from('product_images')
-        .update({
-          image_url: finalUrl,
-          sort_order: idx,
-          is_primary: img.is_primary,
-        })
-        .eq('id', img.id);
-    } else {
-      // Insert new record
-      await supabase.from('product_images').insert({
-        product_id: productId,
-        image_url: finalUrl,
-        sort_order: idx,
-        is_primary: img.is_primary,
-      });
+  if (images.length > 20) throw new Error('Use at most 20 images per product.');
+  for (const image of images) {
+    if (image.file) {
+      const error = validateProductImage(image.file);
+      if (error) throw new Error(error);
     }
   }
+  const rows = [];
+  const uploaded: string[] = [];
+  try {
+    for (const image of images) {
+      const url = image.file ? await uploadImageToStorage(image.file, productId) : image.image_url;
+      if (image.file) uploaded.push(url);
+      rows.push({ id: image.id || crypto.randomUUID(), image_url: url, is_primary: image.is_primary });
+    }
+  } catch (error) {
+    // No database save has been attempted yet, so these files are safe to clean up.
+    await removeStoredImages(productId, uploaded).catch(() => undefined);
+    throw error;
+  }
+  const { data, error } = await supabase.rpc('save_product_images', { p_product_id: productId, p_images: rows });
+  // A lost response may mean the transaction committed: do not delete uploads here.
+  if (error) throw new Error(`Image save failed: ${error.message}. Reload this product before retrying.`);
+  await removeStoredImages(productId, (data || []) as string[]);
 }
 
 /**

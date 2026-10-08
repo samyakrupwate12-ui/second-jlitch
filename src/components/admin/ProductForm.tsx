@@ -9,6 +9,7 @@ import {
   PRODUCT_STATUS_LABELS,
 } from '@/types/db';
 import {
+  ProductSaveError,
   createProduct,
   updateProduct,
   generateSlug,
@@ -39,6 +40,7 @@ interface ProductFormProps {
 
 export default function ProductForm({ initialProduct, isEdit = false }: ProductFormProps) {
   const router = useRouter();
+  const [savedProductId, setSavedProductId] = useState(initialProduct?.id);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
   // Sync state if initialProduct prop changes
   React.useEffect(() => {
     if (initialProduct) {
+      setSavedProductId(initialProduct.id);
       setName(initialProduct.name || '');
       setSlug(initialProduct.slug || '');
       setDescription(initialProduct.description || '');
@@ -126,9 +129,10 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
 
   const validateForm = (): string | null => {
     if (!name.trim()) return 'Product name is required.';
-    if (!slug.trim()) return 'Product slug is required.';
-    if (price === '' || isNaN(Number(price)) || Number(price) < 0) return 'Valid price is required.';
-    if (inventoryQuantity === '' || isNaN(Number(inventoryQuantity)) || Number(inventoryQuantity) < 0) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) return 'Use lowercase letters, numbers and single hyphens for the slug.';
+    if (originalPrice !== '' && (!Number.isFinite(originalPrice) || originalPrice < 0)) return 'Enter a valid original price.';
+    if (price === '' || !Number.isFinite(Number(price)) || Number(price) < 0) return 'Valid price is required.';
+    if (inventoryQuantity === '' || !Number.isInteger(Number(inventoryQuantity)) || Number(inventoryQuantity) < 0) {
       return 'Valid inventory quantity is required.';
     }
     return null;
@@ -168,18 +172,22 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
     setLoading(true);
 
     try {
-      if (isEdit && initialProduct?.id) {
-        await updateProduct(initialProduct.id, formData, images);
+      if (savedProductId) {
+        const saved = await updateProduct(savedProductId, formData, images);
+        setImages((saved.product_images || []).map(image => ({ ...image })));
+        if (!isEdit) router.push(`/admin/products/${savedProductId}`);
         setSuccessMsg('Product updated successfully!');
       } else {
         const created = await createProduct(formData, images);
+        setSavedProductId(created.id);
+        setImages((created.product_images || []).map(image => ({ ...image })));
         setSuccessMsg('Product created successfully!');
         router.push(`/admin/products/${created.id}`);
       }
       setStatus(targetStatus);
-    } catch (err: any) {
-      console.error('Save Product Error:', err);
-      setErrorMsg(err.message || 'Failed to save product.');
+    } catch (err: unknown) {
+      if (err instanceof ProductSaveError) setSavedProductId(err.productId);
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to save product.');
     } finally {
       setLoading(false);
     }
@@ -255,7 +263,8 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
           <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">Action Failed</p>
-            <p className="text-xs text-rose-700 mt-0.5">{errorMsg}</p>
+            <p role="alert" className="text-xs text-rose-700 mt-0.5">{errorMsg}</p>
+            {savedProductId && <a className="text-xs underline" href={`/admin/products/${savedProductId}`}>Reload saved product</a>}
           </div>
         </div>
       )}
@@ -372,6 +381,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
                 <input
                   type="number"
                   min="0"
+                  step="0.01"
                   value={price}
                   onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="899"
@@ -384,6 +394,7 @@ export default function ProductForm({ initialProduct, isEdit = false }: ProductF
                 <input
                   type="number"
                   min="0"
+                  step="0.01"
                   value={originalPrice}
                   onChange={(e) =>
                     setOriginalPrice(e.target.value === '' ? '' : Number(e.target.value))

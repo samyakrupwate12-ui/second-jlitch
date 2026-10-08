@@ -1,5 +1,6 @@
 'use client';
 
+import { statusAfterStockChange } from '@/lib/catalogue';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { getAllProductsAdmin, updateProduct, updateProductVisibility } from '@/lib/products-db';
@@ -41,11 +42,11 @@ export default function AdminInventoryPage() {
   }, []);
 
   const handleUpdateStock = async (prod: DbProduct, newQty: number) => {
-    if (newQty < 0) return;
+    if (!Number.isInteger(newQty) || newQty < 0 || updatingId) return;
     setUpdatingId(prod.id);
     setErrorMsg(null);
 
-    const newStatus = newQty === 0 ? 'sold' : prod.status === 'sold' ? 'active' : prod.status;
+    const newStatus = statusAfterStockChange(prod.status, newQty);
 
     try {
       await updateProduct(prod.id, {
@@ -53,7 +54,7 @@ export default function AdminInventoryPage() {
         status: newStatus,
       });
       setSuccessMsg(`Updated "${prod.name}" stock to ${newQty}`);
-      fetchInventory();
+      await fetchInventory();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to update stock');
     } finally {
@@ -62,11 +63,12 @@ export default function AdminInventoryPage() {
   };
 
   const handleToggleVisibility = async (prod: DbProduct) => {
+    if (updatingId) return;
     setUpdatingId(prod.id);
     try {
       await updateProductVisibility(prod.id, !prod.is_catalog_visible);
       setSuccessMsg(`Toggled catalog visibility for "${prod.name}"`);
-      fetchInventory();
+      await fetchInventory();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to update visibility');
     } finally {
@@ -140,7 +142,7 @@ export default function AdminInventoryPage() {
                   const primaryImg =
                     prod.product_images?.find((img) => img.is_primary)?.image_url ||
                     prod.product_images?.[0]?.image_url ||
-                    '/images/products/linen-blend-blouse.jpg';
+                    '/images/product-placeholder.svg';
 
                   const isUpdating = updatingId === prod.id;
 
@@ -186,7 +188,7 @@ export default function AdminInventoryPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleUpdateStock(prod, prod.inventory_quantity - 1)}
-                            disabled={isUpdating || prod.inventory_quantity <= 0}
+                            disabled={!!updatingId || prod.inventory_quantity <= 0}
                             className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                           >
                             <Minus className="w-3.5 h-3.5" />
@@ -196,7 +198,7 @@ export default function AdminInventoryPage() {
                           </span>
                           <button
                             onClick={() => handleUpdateStock(prod, prod.inventory_quantity + 1)}
-                            disabled={isUpdating}
+                            disabled={!!updatingId}
                             className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -208,7 +210,7 @@ export default function AdminInventoryPage() {
                       <td className="py-3.5 px-4">
                         <button
                           onClick={() => handleToggleVisibility(prod)}
-                          disabled={isUpdating}
+                          disabled={!!updatingId}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                             prod.is_catalog_visible
                               ? 'bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100'
