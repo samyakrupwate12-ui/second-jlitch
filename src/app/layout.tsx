@@ -21,6 +21,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://secondjlitch.in'),
   title: 'SECOND JLITCH — Pre-loved fashion for a brighter tomorrow',
   description: 'Thoughtfully curated pre-loved fashion pieces, ready for their next chapter. A second life. A new story.',
   keywords: ['Second JLITCH', 'pre-loved fashion', 'curated vintage', 'sustainable fashion', 'thrift store'],

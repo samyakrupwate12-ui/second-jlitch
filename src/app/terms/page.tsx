@@ -31,7 +31,7 @@ export default function TermsPage() {
       <p>We may update these terms when our store, products or payment and delivery arrangements change. The version published on this page applies to orders placed after its update. These terms are governed by the laws applicable in India.</p>
 
       <h2>9. Contact</h2>
-      <p>For questions about these terms or an order, contact us through the details on our <a href="/contact">Contact page</a>.</p>
+      <p>For questions about these terms or general store inquiries, reach out to <a href="mailto:contact@scondjlitch.in">contact@scondjlitch.in</a>. For order-specific support, contact <a href="mailto:support@secondjlitch.in">support@secondjlitch.in</a> or visit our <a href="/contact">Contact page</a>.</p>
     </LegalPage>
   );
 }

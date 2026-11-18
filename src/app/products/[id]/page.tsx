@@ -11,6 +11,7 @@ import { availableQuantity } from '@/lib/shopping';
 import { Product } from '@/types/product';
 import SkyBackground from '@/components/ui/SkyBackground';
 import { ArrowLeft, ShoppingBag, Heart, ShieldCheck, Sparkles, Check, Loader2 } from 'lucide-react';
+import ProductShare from '@/components/product/ProductShare';
 
 export default function SingleProductPage() {
   const params = useParams();
@@ -234,11 +235,16 @@ export default function SingleProductPage() {
             {/* Actions */}
             <div className="pt-4 space-y-3">
               {isSoldOut ? (
-                <div className="w-full py-4 rounded-full bg-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-widest text-center cursor-not-allowed">
-                  This Piece is Sold Out
+                <div className="space-y-3">
+                  <div className="w-full py-4 rounded-full bg-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-widest text-center cursor-not-allowed">
+                    This Piece is Sold Out
+                  </div>
+                  <div className="flex justify-center">
+                    <ProductShare product={product} variant="outline" />
+                  </div>
                 </div>
               ) : (
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => void save(product.id, 'cart', cartQuantity + 1)}
                     disabled={!ready || busy || cartQuantity >= availableQuantity(product)}
@@ -257,19 +263,23 @@ export default function SingleProductPage() {
                     )}
                   </button>
 
-                  <button
-                    onClick={() => void save(product.id, 'wishlist', isWishlisted ? 0 : 1)}
-                    disabled={!ready || busy}
-                    aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                    aria-pressed={isWishlisted}
-                    className={`p-4 rounded-full border transition-colors cursor-pointer ${
-                      isWishlisted
-                        ? 'border-rose-200 bg-rose-50 text-rose-500'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-rose-500' : ''}`} />
-                  </button>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={() => void save(product.id, 'wishlist', isWishlisted ? 0 : 1)}
+                      disabled={!ready || busy}
+                      aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                      aria-pressed={isWishlisted}
+                      className={`p-4 rounded-full border transition-colors cursor-pointer ${
+                        isWishlisted
+                          ? 'border-rose-200 bg-rose-50 text-rose-500'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-rose-500' : ''}`} />
+                    </button>
+
+                    <ProductShare product={product} variant="button" />
+                  </div>
                 </div>
               )}
             </div>

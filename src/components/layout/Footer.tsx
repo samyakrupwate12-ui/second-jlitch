@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/ui/Logo';
+import { Mail, LifeBuoy, MapPin } from 'lucide-react';
 
 export default function Footer() {
   const pathname = usePathname();
@@ -28,7 +29,7 @@ export default function Footer() {
         </div>
 
         {/* Links grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-12">
           
           {/* SHOP */}
           <div>
@@ -39,6 +40,11 @@ export default function Footer() {
               <li>
                 <Link href="/products" className="hover:text-white transition-colors">
                   Shop All
+                </Link>
+              </li>
+              <li>
+                <Link href="/pre-loved" className="hover:text-white transition-colors">
+                  Pre-Loved Collection
                 </Link>
               </li>
               <li>
@@ -71,34 +77,95 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-slate-500 cursor-default">Shipping Info</span>
+                <Link href="/shipping" className="hover:text-white transition-colors">
+                  Shipping Info
+                </Link>
               </li>
               <li>
-                <span className="text-slate-500 cursor-default">Returns & Refunds</span>
+                <Link href="/refunds" className="hover:text-white transition-colors">
+                  Returns & Refunds
+                </Link>
               </li>
               <li>
-                <span className="text-slate-500 cursor-default">Contact Us</span>
+                <Link href="/contact" className="hover:text-white transition-colors">
+                  Contact Us
+                </Link>
               </li>
             </ul>
           </div>
 
           {/* POLICIES */}
-          <div className="col-span-2 md:col-span-1">
+          <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400 mb-4 font-sans">
               Policies
             </h3>
             <ul className="space-y-2.5 text-sm text-slate-400">
               <li>
-                <span className="text-slate-500 cursor-default">Terms & Conditions</span>
+                <Link href="/terms" className="hover:text-white transition-colors">
+                  Terms & Conditions
+                </Link>
               </li>
               <li>
-                <span className="text-slate-500 cursor-default">Privacy Policy</span>
+                <Link href="/privacy" className="hover:text-white transition-colors">
+                  Privacy Policy
+                </Link>
               </li>
               <li>
-                <span className="text-slate-500 cursor-default">Return & Refund Policy</span>
+                <Link href="/refunds" className="hover:text-white transition-colors">
+                  Return & Refund Policy
+                </Link>
               </li>
               <li>
-                <span className="text-slate-500 cursor-default">Shipping Policy</span>
+                <Link href="/shipping" className="hover:text-white transition-colors">
+                  Shipping Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* GET IN TOUCH & SUPPORT */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400 mb-4 font-sans">
+              Get in Touch
+            </h3>
+            <ul className="space-y-3 text-xs text-slate-400">
+              <li>
+                <div className="flex items-start gap-2">
+                  <LifeBuoy className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+                      Support
+                    </span>
+                    <a
+                      href="mailto:support@secondjlitch.in"
+                      className="text-slate-300 hover:text-sky-300 transition-colors break-all"
+                    >
+                      support@secondjlitch.in
+                    </a>
+                  </div>
+                </div>
+              </li>
+              <li>
+                <div className="flex items-start gap-2">
+                  <Mail className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+                      Contact
+                    </span>
+                    <a
+                      href="mailto:contact@scondjlitch.in"
+                      className="text-slate-300 hover:text-sky-300 transition-colors break-all"
+                    >
+                      contact@scondjlitch.in
+                    </a>
+                  </div>
+                </div>
+              </li>
+              <li>
+                <div className="flex items-start gap-2 pt-1 text-slate-400">
+                  <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Nashik, Maharashtra, India</span>
+                </div>
               </li>
             </ul>
           </div>

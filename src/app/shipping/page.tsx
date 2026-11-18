@@ -25,7 +25,7 @@ export default function ShippingPage() {
       <p>If the package appears damaged or you receive the wrong item, photograph the package and item and contact us within 48 hours. Do not discard the packaging until our support team has reviewed the issue. See the <a href="/refunds">Return & Refund Policy</a>.</p>
 
       <h2>7. Contact</h2>
-      <p>For a delivery question, include your order reference and delivery PIN code when contacting us through our <a href="/contact">Contact page</a>.</p>
+      <p>For a delivery question, include your order reference and delivery PIN code when contacting our support team at <a href="mailto:support@secondjlitch.in">support@secondjlitch.in</a> or through our <a href="/contact">Contact page</a>.</p>
     </LegalPage>
   );
 }

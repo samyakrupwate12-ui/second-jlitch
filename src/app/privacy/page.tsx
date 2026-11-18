@@ -30,7 +30,7 @@ export default function PrivacyPage() {
       <p>We keep information for as long as reasonably needed for account operation, order support, accounting, fraud prevention and legal obligations. We use access controls and service-provider security features, but no online service can guarantee absolute security.</p>
 
       <h2>7. Your choices</h2>
-      <p>You may request access to or correction of your account information, or ask us to close your account where we are not required to retain records. Some information may need to be retained for completed orders, financial records or legal requirements. Contact us using our <a href="/contact">Contact page</a>.</p>
+      <p>You may request access to or correction of your account information, or ask us to close your account where we are not required to retain records. Some information may need to be retained for completed orders, financial records or legal requirements. Contact us at <a href="mailto:contact@scondjlitch.in">contact@scondjlitch.in</a> or using our <a href="/contact">Contact page</a>.</p>
 
       <h2>8. Children and updates</h2>
       <p>Our store is intended for adults who can enter a purchase contract. We do not knowingly collect personal information from children. We may update this policy as the store changes; the latest version will always be published here.</p>

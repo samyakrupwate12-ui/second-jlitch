@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { Product } from '@/types/product';
+import ProductShare from '@/components/product/ProductShare';
 
 interface ProductCardProps {
   product: Product;
@@ -36,24 +37,27 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           />
         </Link>
 
-        {/* Wishlist Heart Button Overlay */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            void save(product.id, 'wishlist', isWishlisted ? 0 : 1);
-          }}
-          className="absolute top-2.5 right-2.5 p-2 rounded-full bg-white/80 backdrop-blur-md text-slate-700 hover:text-rose-500 hover:bg-white shadow-sm transition-all transform active:scale-90 z-10"
-          disabled={!ready || busy}
-          aria-pressed={isWishlisted}
-          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-        >
-          <Heart
-            className={`w-4 h-4 transition-colors ${
-              isWishlisted ? 'fill-rose-500 text-rose-500' : 'stroke-[1.75]'
-            }`}
-          />
-        </button>
+        {/* Actions Overlay (Share + Wishlist) */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+          <ProductShare product={product} variant="icon" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              void save(product.id, 'wishlist', isWishlisted ? 0 : 1);
+            }}
+            className="p-2 rounded-full bg-white/80 backdrop-blur-md text-slate-700 hover:text-rose-500 hover:bg-white shadow-sm transition-all transform active:scale-90"
+            disabled={!ready || busy}
+            aria-pressed={isWishlisted}
+            aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart
+              className={`w-4 h-4 transition-colors ${
+                isWishlisted ? 'fill-rose-500 text-rose-500' : 'stroke-[1.75]'
+              }`}
+            />
+          </button>
+        </div>
 
         {/* Sold Out Badge (Requirement 6) */}
         {isSoldOut ? (
