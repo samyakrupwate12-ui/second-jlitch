@@ -55,18 +55,13 @@ test('public/robots.txt is valid, disallows private routes, and links to sitemap
   assert.match(content, /Sitemap:\s*https:\/\/secondjlitch\.in\/sitemap\.xml/i);
 });
 
-test('sitemap.ts returns all core pages and product URLs, handling database gracefully', async () => {
-  const mockProducts = [
-    { id: 'item-1', slug: 'silk-shirt', updated_at: '2026-03-01T00:00:00Z' },
-    { id: 'item-2', slug: 'wool-jacket', updated_at: null },
-  ];
-
+test('sitemap.ts returns all core pages and product URLs safely', async () => {
   const sitemapFn = loadModule('src/app/sitemap.ts', {
-    '@/lib/products-db': {
-      getPublicProducts: async () => mockProducts,
-    },
     '@/lib/placeholder-data': {
-      PLACEHOLDER_PRODUCTS: [{ id: 'fallback-1', slug: 'fallback-blouse' }],
+      PLACEHOLDER_PRODUCTS: [
+        { id: 'item-1', slug: 'silk-shirt' },
+        { id: 'item-2', slug: 'wool-jacket' },
+      ],
     },
   });
 
@@ -84,28 +79,9 @@ test('sitemap.ts returns all core pages and product URLs, handling database grac
   assert.ok(urls.includes('https://secondjlitch.in/terms'), 'Terms route missing');
   assert.ok(urls.includes('https://secondjlitch.in/privacy'), 'Privacy route missing');
 
-  // Check dynamic products
+  // Check products
   assert.ok(urls.includes('https://secondjlitch.in/products/silk-shirt'));
   assert.ok(urls.includes('https://secondjlitch.in/products/wool-jacket'));
-});
-
-test('sitemap.ts gracefully falls back when database throws error', async () => {
-  const sitemapFn = loadModule('src/app/sitemap.ts', {
-    '@/lib/products-db': {
-      getPublicProducts: async () => {
-        throw new Error('Database offline');
-      },
-    },
-    '@/lib/placeholder-data': {
-      PLACEHOLDER_PRODUCTS: [{ id: 'prod-fallback', slug: 'fallback-item' }],
-    },
-  });
-
-  const routes = await sitemapFn();
-  assert.ok(Array.isArray(routes));
-  const urls = routes.map((r) => r.url);
-  assert.ok(urls.includes('https://secondjlitch.in/contact'));
-  assert.ok(urls.includes('https://secondjlitch.in/products/fallback-item'));
 });
 
 test('contact page and footer contain support@secondjlitch.in and contact@scondjlitch.in', () => {

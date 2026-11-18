@@ -20,8 +20,11 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ['400', '500', '600', '700'],
 });
 
+const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://secondjlitch.in';
+const siteUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://secondjlitch.in'),
+  metadataBase: new URL(siteUrl),
   title: 'SECOND JLITCH — Pre-loved fashion for a brighter tomorrow',
   description: 'Thoughtfully curated pre-loved fashion pieces, ready for their next chapter. A second life. A new story.',
   keywords: ['Second JLITCH', 'pre-loved fashion', 'curated vintage', 'sustainable fashion', 'thrift store'],

@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
-import { getPublicProducts } from '@/lib/products-db';
 import { PLACEHOLDER_PRODUCTS } from '@/lib/placeholder-data';
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://secondjlitch.in').replace(/\/+$/, '');
+export default function sitemap(): MetadataRoute.Sitemap {
+  const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://secondjlitch.in';
+  const siteUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
+  const baseUrl = siteUrl.replace(/\/+$/, '');
   const now = new Date();
 
   // Core static store & informational routes
@@ -58,29 +59,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamic product routes from Supabase database with fallback to placeholder items
-  try {
-    const dbProducts = await getPublicProducts();
-    if (dbProducts && dbProducts.length > 0) {
-      const productRoutes: MetadataRoute.Sitemap = dbProducts.map((p) => ({
-        url: `${baseUrl}/products/${p.slug || p.id}`,
-        lastModified: p.updated_at ? new Date(p.updated_at) : (p.created_at ? new Date(p.created_at) : now),
-        changeFrequency: 'weekly',
-        priority: 0.8,
-      }));
-      return [...staticRoutes, ...productRoutes];
-    }
-  } catch {
-    // Database query failed (e.g. offline during build) — proceed to fallback
-  }
-
-  // Fallback to placeholder products so sitemap is always populated
-  const fallbackRoutes: MetadataRoute.Sitemap = PLACEHOLDER_PRODUCTS.map((p) => ({
+  // Product routes with explicit literal changeFrequency
+  const productRoutes: MetadataRoute.Sitemap = PLACEHOLDER_PRODUCTS.map((p) => ({
     url: `${baseUrl}/products/${p.slug || p.id}`,
     lastModified: now,
-    changeFrequency: 'weekly',
+    changeFrequency: 'weekly' as const,
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...fallbackRoutes];
+  return [...staticRoutes, ...productRoutes];
 }
